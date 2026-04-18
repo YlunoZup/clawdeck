@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import shlex
 
 from ..models import AppState, TunnelState
 from .vm import VmController, VmError
@@ -50,11 +51,15 @@ class OriginSync:
             log.debug("origin sync skipped: no guest password")
             return False
 
-        # Set allowedOrigins
+        # Quote user-controlled values so shell metacharacters in the URL or
+        # password can't escape out of the command. The URL is server-supplied
+        # (Cloudflare) but we treat it as untrusted input.
+        origin_json = shlex.quote(f'["{url}"]')
+        pw_quoted = shlex.quote(self.vm.guest_password)
         script = (
             f"openclaw config set gateway.controlUi.allowedOrigins "
-            f"'[\\\"{url}\\\"]' >/dev/null && "
-            f"echo {self.vm.guest_password} | sudo -S -p '' systemctl restart openclaw-gateway"
+            f"{origin_json} >/dev/null && "
+            f"echo {pw_quoted} | sudo -S -p '' systemctl restart openclaw-gateway"
         )
         try:
             await self.vm.guest_exec(script, timeout=30.0, allow_fail=True)

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import re
+import shlex
 from dataclasses import dataclass
 
 import httpx
@@ -62,17 +63,17 @@ class TunnelWatcher:
         if URL_RE.fullmatch(out):
             return out
 
-        # Fallback: journalctl
-        fallback = (
-            "echo {pw} | sudo -S -p '' journalctl -u openclaw-tunnel "
-            "--no-pager -n 200 2>/dev/null | "
-            "grep -oE 'https://[a-z0-9-]+\\.trycloudflare\\.com' | tail -1"
-        )
+        # Fallback: journalctl. Quote the password so shell metacharacters
+        # can't leak out of the `echo`.
         if self.vm.guest_password:
+            pw_quoted = shlex.quote(self.vm.guest_password)
+            fallback = (
+                f"echo {pw_quoted} | sudo -S -p '' journalctl -u openclaw-tunnel "
+                "--no-pager -n 200 2>/dev/null | "
+                "grep -oE 'https://[a-z0-9-]+\\.trycloudflare\\.com' | tail -1"
+            )
             try:
-                out = await self.vm.guest_exec(
-                    fallback.format(pw=self.vm.guest_password), allow_fail=True
-                )
+                out = await self.vm.guest_exec(fallback, allow_fail=True)
                 out = (out or "").strip()
                 if URL_RE.fullmatch(out):
                     return out

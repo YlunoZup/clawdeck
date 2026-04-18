@@ -17,6 +17,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
+from ..utils.escaping import osa_escape, xml_escape
 from ..utils.platform import is_linux, is_macos, is_windows
 
 log = logging.getLogger(__name__)
@@ -81,8 +82,8 @@ def _send_windows_winrt(n: Notification) -> bool:
 
     xml = (
         "<toast><visual><binding template='ToastGeneric'>"
-        f"<text>{_xml_escape(n.title)}</text>"
-        f"<text>{_xml_escape(n.body)}</text>"
+        f"<text>{xml_escape(n.title)}</text>"
+        f"<text>{xml_escape(n.body)}</text>"
         "</binding></visual></toast>"
     )
     doc = XmlDocument()
@@ -104,16 +105,6 @@ def _send_windows_legacy(n: Notification) -> bool:
     return True
 
 
-def _xml_escape(s: str) -> str:
-    return (
-        s.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("'", "&apos;")
-        .replace('"', "&quot;")
-    )
-
-
 # ---------------------------------------------------------------------------
 # macOS
 # ---------------------------------------------------------------------------
@@ -121,18 +112,14 @@ def _xml_escape(s: str) -> str:
 
 def _send_macos(n: Notification) -> bool:
     script = (
-        f'display notification "{_osa_escape(n.body)}" '
-        f'with title "{_osa_escape(n.title)}"'
+        f'display notification "{osa_escape(n.body)}" '
+        f'with title "{osa_escape(n.title)}"'
     )
     subprocess.run(
         ["osascript", "-e", script],
         check=False, capture_output=True, timeout=5,
     )
     return True
-
-
-def _osa_escape(s: str) -> str:
-    return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 # ---------------------------------------------------------------------------

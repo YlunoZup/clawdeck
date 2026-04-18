@@ -25,7 +25,7 @@ wheels/
 # PyInstaller
 *.manifest
 *.spec
-!clawdeck.spec
+
 
 # Virtual environments
 .venv/
@@ -69,3 +69,4 @@ logs/
 *.log
 secrets.json
 config.local.toml
+clawdeck.spec

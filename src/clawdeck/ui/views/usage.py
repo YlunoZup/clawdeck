@@ -59,9 +59,23 @@ class UsageView(ft.Column):
         self._refresh()
 
     def _refresh(self) -> None:
+        # Cancel any in-flight refresh so users rapidly clicking don't pile
+        # up parallel calls to `guest_exec`.
+        if self._task is not None and not self._task.done():
+            try:
+                self._task.cancel()
+            except Exception:
+                pass
         self._task = asyncio.run_coroutine_threadsafe(  # type: ignore[assignment]
             self._fetch_and_render(), self.loop,
         )
+
+    def on_detach(self) -> None:
+        if self._task is not None and not self._task.done():
+            try:
+                self._task.cancel()
+            except Exception:
+                pass
 
     async def _fetch_and_render(self) -> None:
         snap = await self._aggregator.snapshot(days=7)
